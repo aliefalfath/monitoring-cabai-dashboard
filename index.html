@@ -76,8 +76,6 @@
 
   .npk-error { background: var(--surface); border: 1px solid var(--red); border-radius: var(--radius); padding: 20px; margin-bottom: 14px; color: var(--red); font-family: var(--mono); font-size: 13px; }
 
-  .alert-banner { background: rgba(248,81,73,0.1); border: 1px solid var(--red); border-radius: var(--radius); padding: 12px 16px; margin-bottom: 10px; font-size: 12px; color: var(--red); font-family: var(--mono); display: flex; align-items: flex-start; gap: 10px; }
-
   .table-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); }
   table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 11px; }
   thead tr { background: var(--surface2); }
@@ -125,8 +123,6 @@
       EXPORT CSV
     </button>
   </div>
-
-  <div id="alert-container"></div>
 
   <div class="section-label">Kondisi Tanah</div>
   <div class="grid-2" id="soil-cards"><div class="spinner"></div></div>
@@ -182,6 +178,7 @@ function stClass(v, min, max) {
   if (max != null && v > max) return 'warn';
   return 'ok';
 }
+
 function stText(v, min, max, unit='') {
   const s = stClass(v, min, max);
   if (s === 'muted')  return '<span class="s-muted">— Tidak ada data</span>';
@@ -269,23 +266,8 @@ function renderNPK(d) {
 }
 
 function checkAlerts(d) {
-  const checks = [
-    [parseFloat(d.ph_tanah),         TH.ph.min,       TH.ph.max,       'pH tanah',         ''],
-    [parseFloat(d.kelembapan_tanah), TH.moisture.min, TH.moisture.max, 'Kelembapan tanah', '%'],
-    [parseFloat(d.suhu_udara),       TH.temp.min,     TH.temp.max,     'Suhu udara',       '°C'],
-    [parseFloat(d.kelembapan_udara), TH.humidity.min, TH.humidity.max, 'Kelembapan udara', '%'],
-    [parseInt(d.nitrogen),           TH.nitrogen.min, TH.nitrogen.max, 'Nitrogen (N)',     ' mg/kg'],
-    [parseInt(d.phosphorus),         TH.fosfor.min,   TH.fosfor.max,   'Fosfor (P)',       ' mg/kg'],
-    [parseInt(d.potassium),          TH.kalium.min,   TH.kalium.max,   'Kalium (K)',       ' mg/kg'],
-  ];
-  const alerts = [];
-  checks.forEach(([v, mn, mx, label, unit]) => {
-    if (isNaN(v)) return;
-    if (v < mn) alerts.push(`${label}: ${v}${unit} — di bawah batas minimum (${mn}${unit})`);
-    else if (v > mx) alerts.push(`${label}: ${v}${unit} — di atas batas maksimum (${mx}${unit})`);
-  });
-  document.getElementById('alert-container').innerHTML =
-    alerts.map(a => `<div class="alert-banner"><span>⚠</span><span>${a}</span></div>`).join('');
+  document.getElementById('alert-container') &&
+    (document.getElementById('alert-container').innerHTML = '');
 }
 
 function tdVal(v, min, max, dec, unit='') {
@@ -316,9 +298,8 @@ function exportCSV() {
     return;
   }
   const header = [
-    'Waktu', 'pH Tanah', 'Kelembapan Tanah (%)',
-    'Suhu Udara (C)', 'Kelembapan Udara (%)',
-    'Nitrogen (mg/kg)', 'Fosfor (mg/kg)', 'Kalium (mg/kg)'
+    'Waktu','pH Tanah','Kelembapan Tanah (%)','Suhu Udara (C)',
+    'Kelembapan Udara (%)','Nitrogen (mg/kg)','Fosfor (mg/kg)','Kalium (mg/kg)'
   ];
   const rows = historyData.map(r => [
     r.waktu,
@@ -334,9 +315,8 @@ function exportCSV() {
   const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
-  const tgl  = new Date().toISOString().slice(0, 10);
   a.href = url;
-  a.download = `monitoring-cabai-${tgl}.csv`;
+  a.download = `monitoring-cabai-${new Date().toISOString().slice(0,10)}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -359,16 +339,15 @@ async function fetchData() {
     renderNPK(data);
     checkAlerts(data);
 
-    // Simpan ke riwayat lokal (maks 200 baris)
     historyData.push({
       waktu:    now.toLocaleString('id-ID'),
-      ph:       parseFloat(data.ph_tanah)          || null,
-      moisture: parseFloat(data.kelembapan_tanah)  || null,
-      temp:     parseFloat(data.suhu_udara)         || null,
-      humidity: parseFloat(data.kelembapan_udara)   || null,
-      nitrogen: parseInt(data.nitrogen)             || null,
-      fosfor:   parseInt(data.phosphorus)           || null,
-      kalium:   parseInt(data.potassium)            || null,
+      ph:       parseFloat(data.ph_tanah)         || null,
+      moisture: parseFloat(data.kelembapan_tanah) || null,
+      temp:     parseFloat(data.suhu_udara)        || null,
+      humidity: parseFloat(data.kelembapan_udara)  || null,
+      nitrogen: parseInt(data.nitrogen)            || null,
+      fosfor:   parseInt(data.phosphorus)          || null,
+      kalium:   parseInt(data.potassium)           || null,
     });
     if (historyData.length > 200) historyData.shift();
     updateTable();
